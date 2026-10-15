@@ -1,0 +1,11 @@
+BEGIN;
+CREATE TABLE users (
+  id UUID PRIMARY KEY,
+  name VARCHAR(100) NOT NULL,
+  email VARCHAR(254) NOT NULL UNIQUE,
+  password_hash VARCHAR(60) NOT NULL,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT users_email_normalized CHECK (email = lower(trim(email)))
+);
+COMMIT;

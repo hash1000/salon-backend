@@ -1,98 +1,50 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Booking backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS 11 authentication using PostgreSQL, Sequelize, bcrypt, Passport JWT, Joi configuration validation, and Swagger.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Setup
 
-## Description
+Use Node.js 22.12 or newer (the installed Nest integration packages use ESM).
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
-
-## Project setup
-
-```bash
-$ npm install
+```sh
+npm ci
+cp .env.example .env
+node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 ```
 
-## Compile and run the project
+Set `JWT_SECRET` in `.env` to the generated value and supply your PostgreSQL connection settings. Create the database, then apply the schema once using a PostgreSQL connection with DDL permissions:
 
-```bash
-# development
-$ npm run start
-
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+```sh
+psql -h localhost -U postgres -d booking -v ON_ERROR_STOP=1 -f database/001-create-users.sql
+npm run start:dev
 ```
 
-## Run tests
+The application does not automatically synchronize or alter database tables. Run migrations separately from the application and use a restricted database account for the running service.
 
-```bash
-# unit tests
-$ npm run test
+## Authentication API
 
-# e2e tests
-$ npm run test:e2e
+Swagger UI: `http://localhost:3000/docs`.
 
-# test coverage
-$ npm run test:cov
+| Endpoint            | Input / authorization                                                            | Response                          |
+| ------------------- | -------------------------------------------------------------------------------- | --------------------------------- |
+| `POST /auth/signup` | `{ "name": "Alex", "email": "alex@example.com", "password": "secure-password" }` | 201: access token and public user |
+| `POST /auth/login`  | `{ "email": "alex@example.com", "password": "secure-password" }`                 | 200: access token and public user |
+| `GET /auth/me`      | `Authorization: Bearer <accessToken>`                                            | 200: `{ "id", "name", "email" }`  |
+
+Signup and login return `{ accessToken, tokenType: "Bearer", expiresIn, user }`. Tokens default to 15 minutes; configure `JWT_ACCESS_TTL_SECONDS` between 60 and 86400 seconds. JWTs enforce HS256, issuer, audience, expiry, and a valid user subject. Deleted users cannot authenticate. Password hashes are excluded from default Sequelize queries and all API responses.
+
+Emails are trimmed and lowercased. Names are trimmed. Passwords require at least eight characters and at most 72 UTF-8 bytes, avoiding bcrypt truncation. Unknown fields and invalid inputs return 400; duplicate emails return 409; invalid credentials or tokens return 401. Requests are limited globally to 10 per IP per minute (429). The in-memory throttle applies per process; use a shared throttle store for multiple instances. Configure trusted proxy handling deliberately if deploying behind a proxy.
+
+To protect another controller or route, import `AuthModule` in its module and apply `@UseGuards(JwtAuthGuard)`. Passport places the public user profile on `request.user`.
+
+Serve production traffic over HTTPS. There are no refresh tokens or logout revocation; access tokens remain valid until expiry unless the user is deleted or the signing secret is rotated.
+
+## Verification
+
+```sh
+npm run build
+npm test -- --runInBand
+npm run test:e2e -- --runInBand
 ```
 
-## Deployment
-
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
-
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Unit tests cover password hashing, credential failures, duplicate constraints, profile projection, claims validation, and request validation. HTTP tests exercise real JWT signing and Passport verification with mocked persistence; they require no PostgreSQL instance. Apply the SQL migration and verify database connectivity against your deployment database before deploying.
