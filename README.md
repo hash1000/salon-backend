@@ -15,15 +15,30 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 Set `JWT_SECRET` in `.env` to the generated value and supply your PostgreSQL connection settings. Create the database, then apply the schema once using a PostgreSQL connection with DDL permissions:
 
 ```sh
-psql -h localhost -U postgres -d booking -v ON_ERROR_STOP=1 -f database/001-create-users.sql
+npm run migration:status
+npm run migration:run
 npm run start:dev
 ```
 
 The application does not automatically synchronize or alter database tables. Run migrations separately from the application and use a restricted database account for the running service.
 
+## Database migrations
+
+Commands load the project `.env`; existing environment variables take precedence. They use the application's `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. The database must already exist.
+
+- `npm run migration:run`: apply pending migrations in filename order.
+- `npm run migration:status`: list applied and pending migrations.
+- `npm run migration:revert`: roll back the latest migration. The initial rollback **deletes the users table and its data**.
+
+Each migration and its history record commit in one transaction. A PostgreSQL advisory lock prevents concurrent runners, and checksums detect changes to applied files. Repeated runs skip applied migrations.
+
+Add files with increasing, zero-padded prefixes (for example `002-add-bookings.sql`) under `database/`, with matching rollback files under `database/rollback/`. Do not include `BEGIN` or `COMMIT`; the runner owns transactions. Do not edit applied migrations or use operations that cannot run inside a transaction.
+
+If you previously applied the initial SQL manually, the runner deliberately fails rather than overwrite the existing table. Verify the existing schema before baselining migration history; do not drop a populated table to initialize migrations.
+
 ## Authentication API
 
-Swagger UI: `http://localhost:3000/docs`.
+Swagger UI: `http://localhost:3000/api/docs`. OpenAPI JSON: `http://localhost:3000/api/docs-json`.
 
 | Endpoint            | Input / authorization                                                            | Response                          |
 | ------------------- | -------------------------------------------------------------------------------- | --------------------------------- |
@@ -47,4 +62,4 @@ npm test -- --runInBand
 npm run test:e2e -- --runInBand
 ```
 
-Unit tests cover password hashing, credential failures, duplicate constraints, profile projection, claims validation, and request validation. HTTP tests exercise real JWT signing and Passport verification with mocked persistence; they require no PostgreSQL instance. Apply the SQL migration and verify database connectivity against your deployment database before deploying.
+Unit tests cover password hashing, credential failures, duplicate constraints, profile projection, claims validation, and request validation. HTTP tests exercise real JWT signing and Passport verification with mocked persistence; they require no PostgreSQL instance. Run `npm run migration:run` and verify database connectivity against your deployment database before deploying.

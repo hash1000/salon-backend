@@ -1,4 +1,3 @@
-BEGIN;
 CREATE TABLE users (
   id UUID PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
@@ -8,4 +7,3 @@ CREATE TABLE users (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT users_email_normalized CHECK (email = lower(trim(email)))
 );
-COMMIT;
